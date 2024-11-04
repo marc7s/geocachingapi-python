@@ -117,8 +117,8 @@ class GeocachingTrackable:
     name: Optional[str] = None
     holder: GeocachingUser = None
     tracking_number: Optional[str] = None
-    kilometers_traveled: Optional[str] = None
-    miles_traveled: Optional[str] = None
+    kilometers_traveled: Optional[float] = None
+    miles_traveled: Optional[float] = None
     current_geocache_code: Optional[str] = None
     current_geocache_name: Optional[str] = None
     latest_journey: GeocachingTrackableJourney = None
@@ -139,8 +139,8 @@ class GeocachingTrackable:
             holder = None
 
         self.tracking_number = try_get_from_dict(data, "trackingNumber", self.tracking_number)
-        self.kilometers_traveled = try_get_from_dict(data, "kilometersTraveled", self.kilometers_traveled)
-        self.miles_traveled = try_get_from_dict(data, "milesTraveled", self.miles_traveled)
+        self.kilometers_traveled = try_get_from_dict(data, "kilometersTraveled", self.kilometers_traveled, float)
+        self.miles_traveled = try_get_from_dict(data, "milesTraveled", self.miles_traveled, float)
         self.current_geocache_code = try_get_from_dict(data, "currectGeocacheCode", self.current_geocache_code)
         self.current_geocache_name = try_get_from_dict(data, "currentGeocacheName", self.current_geocache_name)
         self.is_missing = try_get_from_dict(data, "isMissing", self.is_missing)
