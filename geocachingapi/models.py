@@ -19,17 +19,27 @@ class GeocachingApiEnvironment(Enum):
     Staging = 1,
     Production = 2,
 
+@dataclass
+class NearbyCachesSetting:
+    location: GeocachingCoordinate
+    radiusKm: float
+
 class GeocachingSettings:
     """Class to hold the Geocaching Api settings"""
     trackable_codes: array(str)
     environment: GeocachingApiEnvironment
+    nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables:array(str) = [] ) -> None:
+    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables: array(str) = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
         self.trackable_codes = trackables
+        self.nearby_caches_setting = nearby_caches_setting
     
-    def set_trackables(self, trackables:array(str)):
+    def set_trackables(self, trackables: array(str)):
         self.trackable_codes = trackables
+    
+    def set_nearby_caches_setting(self, setting: NearbyCachesSetting):
+        self.nearby_caches_setting = setting
 
 @dataclass
 class GeocachingUser:
@@ -137,12 +147,26 @@ class GeocachingTrackable:
         self.trackable_type = try_get_from_dict(data, "type", self.trackable_type)
         if "trackableLogs" in data and len(data["trackableLogs"]) > 0:
             self.latest_log = GeocachingTrackableLog(data=data["trackableLogs"][0])
-            
+
+@dataclass
+class GeocachingCache:
+    reference_code: Optional[str] = None
+    name: Optional[str] = None
+    coordinates: GeocachingCoordinate = None
+
+    def update_from_dict(self, data: Dict[str, Any]) -> None:
+        self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
+        self.name = try_get_from_dict(data, "name", self.name)
+        if "coordinates" in data:
+            self.coordinates = GeocachingCoordinate(data=data["coordinates"])
+        else:
+            self.coordinates = None
 
 class GeocachingStatus:
     """Class to hold all account status information"""
     user: GeocachingUser = None
     trackables: Dict[str, GeocachingTrackable] = None
+    nearby_caches: list[GeocachingCache] = None
 
     def __init__(self):
         """Initialize GeocachingStatus"""
@@ -162,4 +186,17 @@ class GeocachingStatus:
             if not reference_code in self.trackables.keys():
                 self.trackables[reference_code] = GeocachingTrackable()
             self.trackables[reference_code].update_from_dict(trackable)
+    
+    def update_nearby_caches_from_dict(self, data: Any) -> None:
+        """Update nearby caches from the API result"""
+        if not any(data):
+            pass
+
+        nearby_caches: list[GeocachingCache] = []
+        for cacheData in data:
+            cache = GeocachingCache()
+            cache.update_from_dict(cacheData)
+            nearby_caches.append(cache)
+        
+        self.nearby_caches = nearby_caches
             

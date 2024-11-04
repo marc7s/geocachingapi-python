@@ -21,6 +21,7 @@ from .exceptions import (
 )
 
 from .models import (
+    GeocachingCoordinate,
     GeocachingStatus,
     GeocachingSettings,
     GeocachingApiEnvironment,
@@ -137,9 +138,11 @@ class GeocachingApi:
         return result
 
     async def update(self) -> GeocachingStatus:
-        await self._update_user(None)
+        await self._update_user()
         if len(self._settings.trackable_codes) > 0:
             await self._update_trackables()
+        if self._settings.nearby_caches_setting is not None:
+            await self._update_nearby_caches()
         _LOGGER.info(f'Status updated.')
         return self._status
         
@@ -187,6 +190,27 @@ class GeocachingApi:
                     trackable.latest_journey = None
 
         _LOGGER.debug(f'Trackables updated.')
+
+    async def _update_nearby_caches(self, data: Dict[str, Any] = None) -> None:
+        assert self._status
+        if self._settings.nearby_caches_setting is None:
+            _LOGGER.warning("Cannot update nearby caches, setting has not been configured.")
+            return
+        
+        if data is None:
+            fields = ",".join([
+                "referenceCode",
+                "name",
+                "postedCoordinates"
+            ])
+            coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
+            radiusKm: float = self._settings.nearby_caches_setting.radiusKm
+            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusKm}km&fields={fields}&sort=distance+&lite=true"
+            # The + sign is not encoded correctly, so we encode it manually
+            data = await self._request("GET", URL.replace("+", "%2B"))
+        self._status.update_nearby_caches_from_dict(data)
+
+        _LOGGER.debug(f'Nearby caches updated.')
 
     async def update_settings(self, settings: GeocachingSettings):
         """Update the Geocaching settings"""
