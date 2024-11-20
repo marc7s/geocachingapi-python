@@ -172,6 +172,7 @@ class GeocachingStatus:
         """Initialize GeocachingStatus"""
         self.user = GeocachingUser()
         self.trackables = {}
+        self.nearby_caches = []
 
     def update_user_from_dict(self, data: Dict[str, Any]) -> None:
         """Update user from the API result"""
