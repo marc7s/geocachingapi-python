@@ -157,8 +157,8 @@ class GeocachingCache:
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
-        if "coordinates" in data:
-            self.coordinates = GeocachingCoordinate(data=data["coordinates"])
+        if "postedCoordinates" in data:
+            self.coordinates = GeocachingCoordinate(data=data["postedCoordinates"])
         else:
             self.coordinates = None
 
