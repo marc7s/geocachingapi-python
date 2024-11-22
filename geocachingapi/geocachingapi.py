@@ -145,7 +145,22 @@ class GeocachingApi:
             await self._update_nearby_caches()
         _LOGGER.info(f'Status updated.')
         return self._status
-        
+
+    async def _get_cache_info(self, data: Dict[str, Any] = None) -> None:
+        assert self._status
+        if data is None:
+            fields = ",".join([
+                "refrenceCode",
+                "name",
+                "postedCoordinates",
+                "favoritePoints"
+            ])
+            caches_parameters = ",".join(self._settings.caches_codes)
+            # Need to send reference code of caches that we want
+            data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}lite=true&fields={fields}" )
+        self._status.update_caches(data)
+        _LOGGER.debug(f'Caches updated.')
+
     async def _update_user(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
