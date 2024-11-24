@@ -24,7 +24,7 @@ class NearbyCachesSetting:
 
 class GeocachingSettings:
     """Class to hold the Geocaching Api settings"""
-    caches_codes: list[str]
+    cache_codes: list[str]
     trackable_codes: list[str]
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
@@ -33,10 +33,10 @@ class GeocachingSettings:
         """Initialize settings"""
         self.trackable_codes = trackables
         self.nearby_caches_setting = nearby_caches_setting
-        self.caches_codes = caches
+        self.cache_codes = caches
 
     def set_caches(self, cache_codes: list[str]):
-        self.caches_codes = cache_codes
+        self.cache_codes = cache_codes
 
     def set_trackables(self, trackable_codes: list[str]):
         self.trackable_codes = trackable_codes

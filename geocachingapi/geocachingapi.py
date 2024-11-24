@@ -145,7 +145,7 @@ class GeocachingApi:
             await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
-        if len(self._settings.caches_codes) > 0:
+        if len(self._settings.cache_codes) > 0:
             await self._get_cache_info()
 
         _LOGGER.info(f'Status updated.')
@@ -154,7 +154,7 @@ class GeocachingApi:
     async def _get_cache_info(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
-            caches_parameters = ",".join(self._settings.caches_codes)
+            caches_parameters = ",".join(self._settings.cache_codes)
             data = await self._request("GET", f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={CACHE_FIELDS_PARAMETER}")
         self._status.update_caches(data)
         _LOGGER.debug(f'Caches updated.')
