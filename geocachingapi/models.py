@@ -185,14 +185,14 @@ class GeocachingStatus:
     user: GeocachingUser = None
     trackables: Dict[str, GeocachingTrackable] = None
     nearby_caches: list[GeocachingCache] = []
-    caches: list[GeocachingCache] = []
+    tracked_caches: list[GeocachingCache] = []
 
     def __init__(self):
         """Initialize GeocachingStatus"""
         self.user = GeocachingUser()
         self.trackables = {}
         self.nearby_caches = []
-        self.caches = []
+        self.tracked_caches = []
 
     def update_user_from_dict(self, data: Dict[str, Any]) -> None:
         """Update user from the API result"""
@@ -207,7 +207,7 @@ class GeocachingStatus:
             cache = GeocachingCache()
             cache.update_from_dict(cacheData)
             caches.append(cache)
-        self.caches = caches
+        self.tracked_caches = caches
 
     def update_trackables_from_dict(self, data: Any) -> None:
         """Update trackables from the API result"""
