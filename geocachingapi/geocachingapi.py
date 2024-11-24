@@ -141,8 +141,8 @@ class GeocachingApi:
         await self._update_user()
         if self._settings.trackable_codes is not None:
             await self._update_trackable_journey()
-        # if len(self._settings.trackable_codes) > 0:
-            # await self._update_trackables()
+        if len(self._settings.trackable_codes) > 0:
+            await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
         if self._settings.caches_codes is not None:
