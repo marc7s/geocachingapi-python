@@ -12,7 +12,7 @@ from yarl import URL
 from aiohttp import ClientResponse, ClientSession, ClientError
 
 from typing import Any, Awaitable, Callable, Dict, Optional
-from .const import ENVIRONMENT_SETTINGS
+from .const import ENVIRONMENT_SETTINGS, CACHE_FIELDS_PARAMETER
 from .exceptions import (
     GeocachingApiConnectionError,
     GeocachingApiConnectionTimeoutError,
@@ -145,7 +145,7 @@ class GeocachingApi:
             await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
-        if self._settings.caches_codes is not None:
+        if len(self._settings.caches_codes) > 0:
             await self._get_cache_info()
 
         _LOGGER.info(f'Status updated.')
@@ -154,13 +154,8 @@ class GeocachingApi:
     async def _get_cache_info(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
-            fields = ",".join([
-                "name",
-                "postedCoordinates",
-                "favoritePoints"
-            ])
             caches_parameters = ",".join(self._settings.caches_codes)
-            data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={fields}")
+            data = await self._request("GET", f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={CACHE_FIELDS_PARAMETER}")
         self._status.update_caches(data)
         _LOGGER.debug(f'Caches updated.')
 
@@ -245,14 +240,9 @@ class GeocachingApi:
             return
         
         if data is None:
-            fields = ",".join([
-                "referenceCode",
-                "name",
-                "postedCoordinates"
-            ])
             coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
             radiusKm: float = self._settings.nearby_caches_setting.radiusKm
-            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusKm}km&fields={fields}&sort=distance+&lite=true"
+            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusKm}km&fields={CACHE_FIELDS_PARAMETER}&sort=distance+&lite=true"
             # The + sign is not encoded correctly, so we encode it manually
             data = await self._request("GET", URL.replace("+", "%2B"))
         self._status.update_nearby_caches_from_dict(data)

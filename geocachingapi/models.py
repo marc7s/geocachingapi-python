@@ -1,5 +1,4 @@
 from __future__ import annotations
-from array import array
 from enum import Enum
 from typing import Any, Dict, Optional, TypedDict, List
 from dataclasses import dataclass, field
@@ -25,22 +24,22 @@ class NearbyCachesSetting:
 
 class GeocachingSettings:
     """Class to hold the Geocaching Api settings"""
-    caches_codes: array(str)
-    trackable_codes: array(str)
+    caches_codes: list[str]
+    trackable_codes: list[str]
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables: array(str) = [], caches: array(str) = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
+    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables: list[str] = [], caches: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
         self.trackable_codes = trackables
         self.nearby_caches_setting = nearby_caches_setting
         self.caches_codes = caches
 
-    def set_caches(self, caches: array(str)):
-        self.caches_codes = caches
+    def set_caches(self, cache_codes: list[str]):
+        self.caches_codes = cache_codes
 
-    def set_trackables(self, trackables: array(str)):
-        self.trackable_codes = trackables
+    def set_trackables(self, trackable_codes: list[str]):
+        self.trackable_codes = trackable_codes
 
     def set_nearby_caches_setting(self, setting: NearbyCachesSetting):
         self.nearby_caches_setting = setting
@@ -164,11 +163,18 @@ class GeocachingCache:
     name: Optional[str] = None
     coordinates: GeocachingCoordinate = None
     favoritePoints: Optional[int] = None
+    findCount: Optional[int] = None
+    hiddenDate: Optional[datetime.date] = None
+    location: Optional[str] = None
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
-        self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints)
+        self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints, int)
+        self.findCount = try_get_from_dict(data, "findCount", self.findCount, int)
+        self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, lambda d: datetime.date(datetime.fromisoformat(d)))
+        self.location = try_get_from_dict(data, "location", self.location)
+        
         if "postedCoordinates" in data:
             self.coordinates = GeocachingCoordinate(data=data["postedCoordinates"])
         else:
@@ -178,8 +184,8 @@ class GeocachingStatus:
     """Class to hold all account status information"""
     user: GeocachingUser = None
     trackables: Dict[str, GeocachingTrackable] = None
-    nearby_caches: list[GeocachingCache] = None
-    caches: GeocachingCache = None
+    nearby_caches: list[GeocachingCache] = []
+    caches: list[GeocachingCache] = []
 
     def __init__(self):
         """Initialize GeocachingStatus"""
