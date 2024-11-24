@@ -162,6 +162,7 @@ class GeocachingTrackable:
     current_geocache_code: Optional[str] = None
     current_geocache_name: Optional[str] = None
     latest_journey: GeocachingTrackableJourney = None
+    trackable_journey: Optional[GeocachingTrackableJourney] = None
     is_missing: bool = (False,)
     trackable_type: str = (None,)
     latest_log: GeocachingTrackableLog = None
@@ -206,7 +207,6 @@ class GeocachingCache:
     name: Optional[str] = None
     coordinates: GeocachingCoordinate = None
     favoritePoints: Optional[int] = None
-    # Maybe add favoritePoints here
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(

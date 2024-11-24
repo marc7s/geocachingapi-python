@@ -139,11 +139,12 @@ class GeocachingApi:
 
     async def update(self) -> GeocachingStatus:
         await self._update_user()
+        if self._settings.trackable_codes is not None:
+            await self._update_trackable_journey()
         if len(self._settings.trackable_codes) > 0:
             await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
-
         if self._settings.caches_codes is not None:
             await self._get_cache_info()
 
@@ -159,7 +160,6 @@ class GeocachingApi:
                 "favoritePoints"
             ])
             caches_parameters = ",".join(self._settings.caches_codes)
-            # Need to send reference code of caches that we want
             try: 
                 data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={fields}")
             except: 
@@ -184,6 +184,25 @@ class GeocachingApi:
         self._status.update_user_from_dict(data)
         _LOGGER.debug(f'User updated.')
     
+    async def _update_trackable_journey(self, data: Dict[str, Any] = None) -> None:
+        assert self._status
+        if data is None:
+            fields = ",".join([
+                "referenceCode",
+                "name",
+                "owner"
+            ])
+            trackable_parameters = ",".join(self._settings.trackable_codes)
+            data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}")
+        self._status.update_trackables_from_dict(data)
+        if len(self._status.trackables) > 0:
+            for trackable in self._status.trackables.values():
+                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=100")
+                if len(trackable_parameters) >= 1:
+                    trackable = GeocachingTrackableJourney(data=trackable_journey_data)
+                    self.trackable_journey.append(trackable)
+
+
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
