@@ -205,6 +205,7 @@ class GeocachingCache:
     reference_code: Optional[str] = None
     name: Optional[str] = None
     coordinates: GeocachingCoordinate = None
+    favoritePoints: Optional[int] = None
     # Maybe add favoritePoints here
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
@@ -212,6 +213,7 @@ class GeocachingCache:
             data, "referenceCode", self.reference_code
         )
         self.name = try_get_from_dict(data, "name", self.name)
+        self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints)
         if "postedCoordinates" in data:
             self.coordinates = GeocachingCoordinate(data=data["postedCoordinates"])
         else:
@@ -224,7 +226,7 @@ class GeocachingStatus:
     user: GeocachingUser = None
     trackables: Dict[str, GeocachingTrackable] = None
     nearby_caches: list[GeocachingCache] = None
-    caches: GeocachingCache = {"name": "hej"}
+    caches: GeocachingCache = None
 
     def __init__(self):
         """Initialize GeocachingStatus"""

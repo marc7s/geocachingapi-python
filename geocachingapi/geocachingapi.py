@@ -81,7 +81,7 @@ class GeocachingApi:
             headers = {}
         else:
             headers = dict(headers)
-
+        print(self.token)
         headers["Authorization"] = f"Bearer {self.token}"
         _LOGGER.debug(f'With headers:')
         _LOGGER.debug(f'{str(headers)}')
@@ -143,6 +143,10 @@ class GeocachingApi:
             await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
+
+        if self._settings.caches_codes is not None:
+            await self._get_cache_info()
+
         _LOGGER.info(f'Status updated.')
         return self._status
 
@@ -150,14 +154,16 @@ class GeocachingApi:
         assert self._status
         if data is None:
             fields = ",".join([
-                "refrenceCode",
                 "name",
                 "postedCoordinates",
                 "favoritePoints"
             ])
             caches_parameters = ",".join(self._settings.caches_codes)
             # Need to send reference code of caches that we want
-            data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}lite=true&fields={fields}" )
+            try: 
+                data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={fields}")
+            except: 
+                data = []
         self._status.update_caches(data)
         _LOGGER.debug(f'Caches updated.')
 
