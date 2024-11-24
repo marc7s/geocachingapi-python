@@ -173,7 +173,13 @@ class GeocachingCache:
         self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints, int)
         self.findCount = try_get_from_dict(data, "findCount", self.findCount, int)
         self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, lambda d: datetime.date(datetime.fromisoformat(d)))
-        self.location = try_get_from_dict(data, "location", self.location)
+        
+        # Parse the location
+        # Returns the location as "State, Country" if either could be parsed
+        location_obj: Dict[Any] = try_get_from_dict(data, "location", {})
+        location_state: str = try_get_from_dict(location_obj, "state", "Unknown")
+        location_country: str = try_get_from_dict(location_obj, "country", "Unknown")
+        self.location = None if set([location_state, location_country]) == {"Unknown"} else f"{location_state}, {location_country}"
         
         if "postedCoordinates" in data:
             self.coordinates = GeocachingCoordinate(data=data["postedCoordinates"])
