@@ -2,9 +2,11 @@ from __future__ import annotations
 from array import array
 from enum import Enum
 from typing import Any, Dict, Optional, TypedDict
-
+from typing import List
+from dataclasses import field
 from dataclasses import dataclass
 from datetime import datetime
+
 from .utils import try_get_from_dict
 
 
@@ -123,6 +125,10 @@ class GeocachingTrackableJourney:
             self.coordinates = None
         self.logged_date = try_get_from_dict(data, "loggedDate", self.logged_date)
 
+    @classmethod
+    def from_list(cls, data_list: List[Dict[str, Any]]) -> List[GeocachingTrackableJourney]:
+        """Creates a list of GeocachingTrackableJourney instances from an array of data"""
+        return [cls(data=data) for data in data_list]
 
 @dataclass
 class GeocachingTrackableLog:
@@ -161,8 +167,10 @@ class GeocachingTrackable:
     miles_traveled: Optional[float] = None
     current_geocache_code: Optional[str] = None
     current_geocache_name: Optional[str] = None
-    latest_journey: GeocachingTrackableJourney = None
-    trackable_journey: Optional[GeocachingTrackableJourney] = None
+    latest_journey: Optional[GeocachingTrackableJourney] = None,
+    trackable_journeys: Optional[List[GeocachingTrackableJourney]] = field(default_factory=list)
+
+
     is_missing: bool = (False,)
     trackable_type: str = (None,)
     latest_log: GeocachingTrackableLog = None

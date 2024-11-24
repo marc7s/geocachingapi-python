@@ -11,7 +11,7 @@ import backoff
 from yarl import URL
 from aiohttp import ClientResponse, ClientSession, ClientError
 
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional
 from .const import ENVIRONMENT_SETTINGS
 from .exceptions import (
     GeocachingApiConnectionError,
@@ -141,8 +141,8 @@ class GeocachingApi:
         await self._update_user()
         if self._settings.trackable_codes is not None:
             await self._update_trackable_journey()
-        if len(self._settings.trackable_codes) > 0:
-            await self._update_trackables()
+        # if len(self._settings.trackable_codes) > 0:
+            # await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
         if self._settings.caches_codes is not None:
@@ -190,18 +190,28 @@ class GeocachingApi:
             fields = ",".join([
                 "referenceCode",
                 "name",
-                "owner"
+                "holder",
+                "trackingNumber",
+                "kilometersTraveled",
+                "milesTraveled",
+                "currentGeocacheCode",
+                "currentGeocacheName",
+                "isMissing",
+                "type"
             ])
             trackable_parameters = ",".join(self._settings.trackable_codes)
             data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}")
         self._status.update_trackables_from_dict(data)
         if len(self._status.trackables) > 0:
             for trackable in self._status.trackables.values():
-                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=100")
-                if len(trackable_parameters) >= 1:
-                    abc = GeocachingTrackableJourney(data=trackable_journey_data)
-                    trackable.trackable_journey.append(abc)
+                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=1")
+                if trackable_journey_data:  # Ensure data exists
+                    # Create a list of GeocachingTrackableJourney instances
+                    journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
 
+                    for i, journey in enumerate(journeys):
+                        # Add each journey to the trackable's trackable_journeys list by index
+                        trackable.trackable_journeys.append(journey)
 
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
         assert self._status
