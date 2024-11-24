@@ -199,8 +199,8 @@ class GeocachingApi:
             for trackable in self._status.trackables.values():
                 trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=100")
                 if len(trackable_parameters) >= 1:
-                    trackable = GeocachingTrackableJourney(data=trackable_journey_data)
-                    self.trackable_journey.append(trackable)
+                    abc = GeocachingTrackableJourney(data=trackable_journey_data)
+                    trackable.trackable_journey.append(abc)
 
 
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
