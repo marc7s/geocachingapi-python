@@ -1,9 +1,7 @@
 from __future__ import annotations
-from array import array
 from enum import Enum
-from typing import Any, Dict, Optional, TypedDict
-
-from dataclasses import dataclass
+from typing import Any, Dict, Optional, TypedDict, List
+from dataclasses import dataclass, field
 from datetime import datetime
 from .utils import try_get_from_dict
 
@@ -26,18 +24,23 @@ class NearbyCachesSetting:
 
 class GeocachingSettings:
     """Class to hold the Geocaching Api settings"""
-    trackable_codes: array(str)
+    cache_codes: list[str]
+    trackable_codes: list[str]
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables: array(str) = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
+    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables: list[str] = [], caches: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
         self.trackable_codes = trackables
         self.nearby_caches_setting = nearby_caches_setting
-    
-    def set_trackables(self, trackables: array(str)):
-        self.trackable_codes = trackables
-    
+        self.cache_codes = caches
+
+    def set_caches(self, cache_codes: list[str]):
+        self.cache_codes = cache_codes
+
+    def set_trackables(self, trackable_codes: list[str]):
+        self.trackable_codes = trackable_codes
+
     def set_nearby_caches_setting(self, setting: NearbyCachesSetting):
         self.nearby_caches_setting = setting
 
@@ -89,6 +92,11 @@ class GeocachingTrackableJourney:
             self.coordinates = None
         self.logged_date = try_get_from_dict(data, "loggedDate", self.logged_date)
 
+    @classmethod
+    def from_list(cls, data_list: List[Dict[str, Any]]) -> List[GeocachingTrackableJourney]:
+        """Creates a list of GeocachingTrackableJourney instances from an array of data"""
+        return [cls(data=data) for data in data_list]
+
 @dataclass
 class GeocachingTrackableLog:
     reference_code: Optional[str] = None
@@ -121,12 +129,13 @@ class GeocachingTrackable:
     miles_traveled: Optional[float] = None
     current_geocache_code: Optional[str] = None
     current_geocache_name: Optional[str] = None
-    latest_journey: GeocachingTrackableJourney = None
+    latest_journey: Optional[GeocachingTrackableJourney] = None,
+    trackable_journeys: Optional[List[GeocachingTrackableJourney]] = field(default_factory=list)
+
     is_missing: bool = False,
     trackable_type: str = None,
     latest_log: GeocachingTrackableLog = None
 
-    
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         """Update trackable from the API"""
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
@@ -153,10 +162,25 @@ class GeocachingCache:
     reference_code: Optional[str] = None
     name: Optional[str] = None
     coordinates: GeocachingCoordinate = None
+    favoritePoints: Optional[int] = None
+    findCount: Optional[int] = None
+    hiddenDate: Optional[datetime.date] = None
+    location: Optional[str] = None
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
+        self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints, int)
+        self.findCount = try_get_from_dict(data, "findCount", self.findCount, int)
+        self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, lambda d: datetime.date(datetime.fromisoformat(d)))
+        
+        # Parse the location
+        # Returns the location as "State, Country" if either could be parsed
+        location_obj: Dict[Any] = try_get_from_dict(data, "location", {})
+        location_state: str = try_get_from_dict(location_obj, "state", "Unknown")
+        location_country: str = try_get_from_dict(location_obj, "country", "Unknown")
+        self.location = None if set([location_state, location_country]) == {"Unknown"} else f"{location_state}, {location_country}"
+        
         if "postedCoordinates" in data:
             self.coordinates = GeocachingCoordinate(data=data["postedCoordinates"])
         else:
@@ -166,18 +190,31 @@ class GeocachingStatus:
     """Class to hold all account status information"""
     user: GeocachingUser = None
     trackables: Dict[str, GeocachingTrackable] = None
-    nearby_caches: list[GeocachingCache] = None
+    nearby_caches: list[GeocachingCache] = []
+    tracked_caches: list[GeocachingCache] = []
 
     def __init__(self):
         """Initialize GeocachingStatus"""
         self.user = GeocachingUser()
         self.trackables = {}
         self.nearby_caches = []
+        self.tracked_caches = []
 
     def update_user_from_dict(self, data: Dict[str, Any]) -> None:
         """Update user from the API result"""
         self.user.update_from_dict(data)
-    
+
+    def update_caches(self, data: Any) -> None:
+        """Update caches from the API result"""
+        if not any(data):
+           pass
+        caches: list[GeocachingCache] = []
+        for cacheData in data:
+            cache = GeocachingCache()
+            cache.update_from_dict(cacheData)
+            caches.append(cache)
+        self.tracked_caches = caches
+
     def update_trackables_from_dict(self, data: Any) -> None:
         """Update trackables from the API result"""
         if not any(data):

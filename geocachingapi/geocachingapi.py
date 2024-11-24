@@ -11,8 +11,8 @@ import backoff
 from yarl import URL
 from aiohttp import ClientResponse, ClientSession, ClientError
 
-from typing import Any, Awaitable, Callable, Dict, List, Optional
-from .const import ENVIRONMENT_SETTINGS
+from typing import Any, Awaitable, Callable, Dict, Optional
+from .const import ENVIRONMENT_SETTINGS, CACHE_FIELDS_PARAMETER
 from .exceptions import (
     GeocachingApiConnectionError,
     GeocachingApiConnectionTimeoutError,
@@ -139,13 +139,26 @@ class GeocachingApi:
 
     async def update(self) -> GeocachingStatus:
         await self._update_user()
+        if self._settings.trackable_codes is not None:
+            await self._update_trackable_journey()
         if len(self._settings.trackable_codes) > 0:
             await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
             await self._update_nearby_caches()
+        if len(self._settings.cache_codes) > 0:
+            await self._get_cache_info()
+
         _LOGGER.info(f'Status updated.')
         return self._status
-        
+
+    async def _get_cache_info(self, data: Dict[str, Any] = None) -> None:
+        assert self._status
+        if data is None:
+            caches_parameters = ",".join(self._settings.cache_codes)
+            data = await self._request("GET", f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={CACHE_FIELDS_PARAMETER}")
+        self._status.update_caches(data)
+        _LOGGER.debug(f'Caches updated.')
+
     async def _update_user(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
@@ -163,6 +176,35 @@ class GeocachingApi:
         self._status.update_user_from_dict(data)
         _LOGGER.debug(f'User updated.')
     
+    async def _update_trackable_journey(self, data: Dict[str, Any] = None) -> None:
+        assert self._status
+        if data is None:
+            fields = ",".join([
+                "referenceCode",
+                "name",
+                "holder",
+                "trackingNumber",
+                "kilometersTraveled",
+                "milesTraveled",
+                "currentGeocacheCode",
+                "currentGeocacheName",
+                "isMissing",
+                "type"
+            ])
+            trackable_parameters = ",".join(self._settings.trackable_codes)
+            data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}")
+        self._status.update_trackables_from_dict(data)
+        if len(self._status.trackables) > 0:
+            for trackable in self._status.trackables.values():
+                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=1")
+                if trackable_journey_data:  # Ensure data exists
+                    # Create a list of GeocachingTrackableJourney instances
+                    journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
+
+                    for i, journey in enumerate(journeys):
+                        # Add each journey to the trackable's trackable_journeys list by index
+                        trackable.trackable_journeys.append(journey)
+
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
@@ -198,14 +240,9 @@ class GeocachingApi:
             return
         
         if data is None:
-            fields = ",".join([
-                "referenceCode",
-                "name",
-                "postedCoordinates"
-            ])
             coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
             radiusKm: float = self._settings.nearby_caches_setting.radiusKm
-            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusKm}km&fields={fields}&sort=distance+&lite=true"
+            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusKm}km&fields={CACHE_FIELDS_PARAMETER}&sort=distance+&lite=true"
             # The + sign is not encoded correctly, so we encode it manually
             data = await self._request("GET", URL.replace("+", "%2B"))
         self._status.update_nearby_caches_from_dict(data)
