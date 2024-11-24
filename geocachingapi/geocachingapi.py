@@ -81,7 +81,7 @@ class GeocachingApi:
             headers = {}
         else:
             headers = dict(headers)
-        print(self.token)
+
         headers["Authorization"] = f"Bearer {self.token}"
         _LOGGER.debug(f'With headers:')
         _LOGGER.debug(f'{str(headers)}')
@@ -160,10 +160,7 @@ class GeocachingApi:
                 "favoritePoints"
             ])
             caches_parameters = ",".join(self._settings.caches_codes)
-            try: 
-                data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={fields}")
-            except: 
-                data = []
+            data = await self._request("GET",f"/geocaches?referenceCodes={caches_parameters}&lite=true&fields={fields}")
         self._status.update_caches(data)
         _LOGGER.debug(f'Caches updated.')
 
