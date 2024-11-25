@@ -1,9 +1,21 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Dict, Optional, TypedDict, List
+from typing import Any, Dict, Optional, TypedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from .utils import try_get_from_dict
+
+DATETIME_PARSER = lambda d: datetime.date(datetime.fromisoformat(d))
+
+def try_get_user_from_dict(data: Dict[str, Any], key: str, original_value: Any) -> GeocachingUser | None:
+    """Try to get user from dict, otherwise set default value"""
+    user_data = try_get_from_dict(data, key, None)
+    if user_data is None:
+        return original_value
+    
+    user = GeocachingUser()
+    user.update_from_dict(data[key])
+    return user
 
 class GeocachingApiEnvironmentSettings(TypedDict):
     """Class to represent API environment settings"""
@@ -14,8 +26,8 @@ class GeocachingApiEnvironmentSettings(TypedDict):
 
 class GeocachingApiEnvironment(Enum):
     """Enum to represent API environment"""
-    Staging = 1,
-    Production = 2,
+    Staging = 1
+    Production = 2
 
 @dataclass
 class NearbyCachesSetting:
@@ -93,8 +105,10 @@ class GeocachingTrackableJourney:
         self.logged_date = try_get_from_dict(data, "loggedDate", self.logged_date)
 
     @classmethod
-    def from_list(cls, data_list: List[Dict[str, Any]]) -> List[GeocachingTrackableJourney]:
+    def from_list(cls, data_list: list[Dict[str, Any]]) -> list[GeocachingTrackableJourney]:
         """Creates a list of GeocachingTrackableJourney instances from an array of data"""
+        # TODO: Look into filtering this list for only journey-related logs
+        # Reference: https://api.groundspeak.com/documentation#trackable-log-types
         return [cls(data=data) for data in data_list]
 
 @dataclass
@@ -106,16 +120,11 @@ class GeocachingTrackableLog:
     logged_date: Optional[datetime] = None
 
     def __init__(self, *, data: Dict[str, Any]) -> GeocachingTrackableLog:
-        self.reference_code = try_get_from_dict(data, 'referenceCode',self.reference_code)
-        if self.owner is None:
-            self.owner = GeocachingUser()
-        if 'owner' in data:
-            self.owner.update_from_dict(data['owner'])
-        else:
-            self.owner = None
-        self.log_type = try_get_from_dict(data['trackableLogType'], 'name',self.log_type)
-        self.logged_date = try_get_from_dict(data, 'loggedDate',self.logged_date)
-        self.text = try_get_from_dict(data, 'text',self.text)
+        self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
+        self.owner = try_get_user_from_dict(data, "owner", self.owner)
+        self.log_type = try_get_from_dict(data["trackableLogType"], "name", self.log_type)
+        self.logged_date = try_get_from_dict(data, "loggedDate", self.logged_date)
+        self.text = try_get_from_dict(data, "text", self.text)
 
 
 @dataclass
@@ -124,33 +133,30 @@ class GeocachingTrackable:
     reference_code: Optional[str] = None
     name: Optional[str] = None
     holder: GeocachingUser = None
+    owner: GeocachingUser = None
+    release_date: Optional[datetime.date] = None
     tracking_number: Optional[str] = None
     kilometers_traveled: Optional[float] = None
     miles_traveled: Optional[float] = None
     current_geocache_code: Optional[str] = None
     current_geocache_name: Optional[str] = None
-    latest_journey: Optional[GeocachingTrackableJourney] = None,
-    trackable_journeys: Optional[List[GeocachingTrackableJourney]] = field(default_factory=list)
+    journeys: Optional[list[GeocachingTrackableJourney]] = field(default_factory=list)
 
     is_missing: bool = False,
-    trackable_type: str = None,
+    trackable_type: str = None
     latest_log: GeocachingTrackableLog = None
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         """Update trackable from the API"""
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
-        if data["holder"] is not None:
-            if self.holder is None :
-                holder = GeocachingUser()
-            holder.update_from_dict(data["holder"])
-        else:
-            holder = None
-
+        self.holder = try_get_user_from_dict(data, "holder", self.holder)
+        self.owner = try_get_user_from_dict(data, "owner", self.owner)
+        self.release_date = try_get_from_dict(data, "releasedDate", self.release_date, DATETIME_PARSER)
         self.tracking_number = try_get_from_dict(data, "trackingNumber", self.tracking_number)
         self.kilometers_traveled = try_get_from_dict(data, "kilometersTraveled", self.kilometers_traveled, float)
         self.miles_traveled = try_get_from_dict(data, "milesTraveled", self.miles_traveled, float)
-        self.current_geocache_code = try_get_from_dict(data, "currectGeocacheCode", self.current_geocache_code)
+        self.current_geocache_code = try_get_from_dict(data, "currentGeocacheCode", self.current_geocache_code)
         self.current_geocache_name = try_get_from_dict(data, "currentGeocacheName", self.current_geocache_name)
         self.is_missing = try_get_from_dict(data, "isMissing", self.is_missing)
         self.trackable_type = try_get_from_dict(data, "type", self.trackable_type)
@@ -161,6 +167,7 @@ class GeocachingTrackable:
 class GeocachingCache:
     reference_code: Optional[str] = None
     name: Optional[str] = None
+    owner: GeocachingUser = None
     coordinates: GeocachingCoordinate = None
     favoritePoints: Optional[int] = None
     findCount: Optional[int] = None
@@ -170,9 +177,10 @@ class GeocachingCache:
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
+        self.owner = try_get_user_from_dict(data, "owner", self.owner)
         self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints, int)
         self.findCount = try_get_from_dict(data, "findCount", self.findCount, int)
-        self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, lambda d: datetime.date(datetime.fromisoformat(d)))
+        self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, DATETIME_PARSER)
         
         # Parse the location
         # Returns the location as "State, Country" if either could be parsed

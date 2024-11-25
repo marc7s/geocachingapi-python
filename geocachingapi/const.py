@@ -27,6 +27,7 @@ MEMBERSHIP_LEVELS = {
 CACHE_FIELDS_PARAMETER: str = ",".join([
                 "referenceCode",
                 "name",
+                "owner",
                 "postedCoordinates",
                 "favoritePoints",
                 #"findCount", # TODO: Include this another way, as this is not part of lite caches
