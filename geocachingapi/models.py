@@ -26,8 +26,8 @@ class GeocachingApiEnvironmentSettings(TypedDict):
 
 class GeocachingApiEnvironment(Enum):
     """Enum to represent API environment"""
-    Staging = 1,
-    Production = 2,
+    Staging = 1
+    Production = 2
 
 @dataclass
 class NearbyCachesSetting:
@@ -120,11 +120,11 @@ class GeocachingTrackableLog:
     logged_date: Optional[datetime] = None
 
     def __init__(self, *, data: Dict[str, Any]) -> GeocachingTrackableLog:
-        self.reference_code = try_get_from_dict(data, 'referenceCode', self.reference_code)
+        self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
-        self.log_type = try_get_from_dict(data['trackableLogType'], 'name', self.log_type)
-        self.logged_date = try_get_from_dict(data, 'loggedDate', self.logged_date)
-        self.text = try_get_from_dict(data, 'text', self.text)
+        self.log_type = try_get_from_dict(data["trackableLogType"], "name", self.log_type)
+        self.logged_date = try_get_from_dict(data, "loggedDate", self.logged_date)
+        self.text = try_get_from_dict(data, "text", self.text)
 
 
 @dataclass
