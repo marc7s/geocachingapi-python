@@ -139,8 +139,6 @@ class GeocachingApi:
 
     async def update(self) -> GeocachingStatus:
         await self._update_user()
-        if self._settings.trackable_codes is not None:
-            await self._update_trackable_journey()
         if len(self._settings.trackable_codes) > 0:
             await self._update_trackables()
         if self._settings.nearby_caches_setting is not None:
@@ -194,16 +192,18 @@ class GeocachingApi:
             trackable_parameters = ",".join(self._settings.trackable_codes)
             data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}")
         self._status.update_trackables_from_dict(data)
+        
+        # Update trackable journeys
         if len(self._status.trackables) > 0:
             for trackable in self._status.trackables.values():
-                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=1")
+                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-")
                 if trackable_journey_data:  # Ensure data exists
                     # Create a list of GeocachingTrackableJourney instances
                     journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
 
                     for i, journey in enumerate(journeys):
                         # Add each journey to the trackable's trackable_journeys list by index
-                        trackable.trackable_journeys.append(journey)
+                        trackable.journeys.append(journey)
 
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
         assert self._status
@@ -212,6 +212,8 @@ class GeocachingApi:
                 "referenceCode",
                 "name",
                 "holder",
+                "owner",
+                "releasedDate",
                 "trackingNumber",
                 "kilometersTraveled",
                 "milesTraveled",
@@ -223,13 +225,15 @@ class GeocachingApi:
             trackable_parameters = ",".join(self._settings.trackable_codes)
             data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}&expand=trackablelogs:1")
         self._status.update_trackables_from_dict(data)
+        
+        # Update trackable journeys
         if len(self._status.trackables) > 0:
             for trackable in self._status.trackables.values():
-                latest_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-&take=1")
-                if len(latest_journey_data) == 1:
-                    trackable.latest_journey = GeocachingTrackableJourney(data=latest_journey_data[0])
-                else:
-                    trackable.latest_journey = None
+                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-")
+                if trackable_journey_data:
+                    # Create a list of GeocachingTrackableJourney instances
+                    journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
+                    trackable.journeys = journeys
 
         _LOGGER.debug(f'Trackables updated.')
 
