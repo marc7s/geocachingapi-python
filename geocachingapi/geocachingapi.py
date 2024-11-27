@@ -141,7 +141,7 @@ class GeocachingApi:
         await self._update_user()
         if len(self._settings.trackable_codes) > 0:
             await self._update_trackables()
-        if self._settings.nearby_caches_setting is not None:
+        if self._settings.nearby_caches_setting is not None and self._settings.nearby_caches_setting.maxCount > 0:
             await self._update_nearby_caches()
         if len(self._settings.cache_codes) > 0:
             await self._get_cache_info()
@@ -246,7 +246,7 @@ class GeocachingApi:
         if data is None:
             coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
             radiusM: int = round(self._settings.nearby_caches_setting.radiusKm * 1000)
-            maxCount: int = self._settings.nearby_caches_setting.maxCount
+            maxCount: int = min(max(self._settings.nearby_caches_setting.maxCount, 0), 100) # Take range is 0-100 in API
             URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"
             # The + sign is not encoded correctly, so we encode it manually
             data = await self._request("GET", URL.replace("+", "%2B"))
