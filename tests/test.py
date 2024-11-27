@@ -11,7 +11,7 @@ async def test():
     """Function to test GeocachingAPI integration"""
     gc_settings = GeocachingSettings()
     api = GeocachingApi(token=TOKEN, environment=GeocachingApiEnvironment.Staging, settings=gc_settings)
-    gc_settings.set_trackables(['TB87DTF'])
+    gc_settings.set_tracked_trackables(['TB87DTF'])
     await api.update_settings(gc_settings)
     await _update(api)
     await api.close()

@@ -139,11 +139,11 @@ class GeocachingApi:
 
     async def update(self) -> GeocachingStatus:
         await self._update_user()
-        if len(self._settings.trackable_codes) > 0:
+        if len(self._settings.tracked_trackable_codes) > 0:
             await self._update_trackables()
-        if self._settings.nearby_caches_setting is not None and self._settings.nearby_caches_setting.maxCount > 0:
+        if self._settings.nearby_caches_setting is not None and self._settings.nearby_caches_setting.max_count > 0:
             await self._update_nearby_caches()
-        if len(self._settings.cache_codes) > 0:
+        if len(self._settings.tracked_cache_codes) > 0:
             await self._update_tracked_caches()
 
         _LOGGER.info(f'Status updated.')
@@ -152,10 +152,10 @@ class GeocachingApi:
     async def _update_tracked_caches(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
-            caches_parameters = ",".join(self._settings.cache_codes)
-            data = await self._request("GET", f"/geocaches?referenceCodes={caches_parameters}&fields={CACHE_FIELDS_PARAMETER}&lite=true")
+            cache_codes = ",".join(self._settings.tracked_cache_codes)
+            data = await self._request("GET", f"/geocaches?referenceCodes={cache_codes}&fields={CACHE_FIELDS_PARAMETER}&lite=true")
         self._status.update_caches(data)
-        _LOGGER.debug(f'Caches updated.')
+        _LOGGER.debug(f'Tracked caches updated.')
 
     async def _update_user(self, data: Dict[str, Any] = None) -> None:
         assert self._status
@@ -173,37 +173,6 @@ class GeocachingApi:
             data = await self._request("GET", f"/users/me?fields={fields}")
         self._status.update_user_from_dict(data)
         _LOGGER.debug(f'User updated.')
-    
-    async def _update_trackable_journey(self, data: Dict[str, Any] = None) -> None:
-        assert self._status
-        if data is None:
-            fields = ",".join([
-                "referenceCode",
-                "name",
-                "holder",
-                "trackingNumber",
-                "kilometersTraveled",
-                "milesTraveled",
-                "currentGeocacheCode",
-                "currentGeocacheName",
-                "isMissing",
-                "type"
-            ])
-            trackable_parameters = ",".join(self._settings.trackable_codes)
-            data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}")
-        self._status.update_trackables_from_dict(data)
-        
-        # Update trackable journeys
-        if len(self._status.trackables) > 0:
-            for trackable in self._status.trackables.values():
-                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-")
-                if trackable_journey_data:  # Ensure data exists
-                    # Create a list of GeocachingTrackableJourney instances
-                    journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
-
-                    for i, journey in enumerate(journeys):
-                        # Add each journey to the trackable's trackable_journeys list by index
-                        trackable.journeys.append(journey)
 
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
         assert self._status
@@ -222,7 +191,7 @@ class GeocachingApi:
                 "isMissing",
                 "type"
             ])
-            trackable_parameters = ",".join(self._settings.trackable_codes)
+            trackable_parameters = ",".join(self._settings.tracked_trackable_codes)
             data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}&expand=trackablelogs:1")
         self._status.update_trackables_from_dict(data)
         
@@ -245,8 +214,8 @@ class GeocachingApi:
         
         if data is None:
             coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
-            radiusM: int = round(self._settings.nearby_caches_setting.radiusKm * 1000)
-            maxCount: int = min(max(self._settings.nearby_caches_setting.maxCount, 0), 100) # Take range is 0-100 in API
+            radiusM: int = round(self._settings.nearby_caches_setting.radius_km * 1000)
+            maxCount: int = min(max(self._settings.nearby_caches_setting.max_count, 0), 100) # Take range is 0-100 in API
             URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"
             # The + sign is not encoded correctly, so we encode it manually
             data = await self._request("GET", URL.replace("+", "%2B"))
