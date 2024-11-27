@@ -245,8 +245,9 @@ class GeocachingApi:
         
         if data is None:
             coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
-            radiusKm: float = self._settings.nearby_caches_setting.radiusKm
-            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusKm}km&fields={CACHE_FIELDS_PARAMETER}&sort=distance+&lite=true"
+            radiusM: int = round(self._settings.nearby_caches_setting.radiusKm * 1000)
+            maxCount: int = self._settings.nearby_caches_setting.maxCount
+            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"
             # The + sign is not encoded correctly, so we encode it manually
             data = await self._request("GET", URL.replace("+", "%2B"))
         self._status.update_nearby_caches_from_dict(data)

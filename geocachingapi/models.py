@@ -33,6 +33,12 @@ class GeocachingApiEnvironment(Enum):
 class NearbyCachesSetting:
     location: GeocachingCoordinate
     radiusKm: float
+    maxCount: int
+
+    def __init__(self, location: GeocachingCoordinate, radiusKm: float, maxCount: int) -> None:
+        self.location = location
+        self.radiusKm = radiusKm
+        self.maxCount = round(maxCount)
 
 class GeocachingSettings:
     """Class to hold the Geocaching Api settings"""
