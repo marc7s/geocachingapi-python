@@ -172,11 +172,8 @@ class GeocachingCache:
     favoritePoints: Optional[int] = None
     hiddenDate: Optional[datetime.date] = None
     foundDateTime: Optional[datetime] = None
+    foundByUser: Optional[bool] = None
     location: Optional[str] = None
-
-    @property
-    def found_by_user(self) -> bool:
-        return self.foundDateTime is not None
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
@@ -191,8 +188,10 @@ class GeocachingCache:
             user_data_obj: Dict[Any] = try_get_from_dict(data, "userData", {})
             found_date_time: datetime | None = try_get_from_dict(user_data_obj, "foundDate", None, lambda d: None if d is None else datetime.fromisoformat(d))
             self.foundDateTime = found_date_time
+            self.foundByUser = found_date_time is not None
         else:
             self.foundDateTime = None
+            self.foundByUser = None
         
         # Parse the location
         # Returns the location as "State, Country" if either could be parsed
