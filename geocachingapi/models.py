@@ -170,17 +170,29 @@ class GeocachingCache:
     owner: GeocachingUser = None
     coordinates: GeocachingCoordinate = None
     favoritePoints: Optional[int] = None
-    findCount: Optional[int] = None
     hiddenDate: Optional[datetime.date] = None
+    foundDateTime: Optional[datetime] = None
     location: Optional[str] = None
+
+    @property
+    def found_by_user(self) -> bool:
+        return self.foundDateTime is not None
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
         self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints, int)
-        self.findCount = try_get_from_dict(data, "findCount", self.findCount, int)
         self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, DATETIME_PARSER)
+
+        # Parse the user data (information about this cache, specific to the user)
+        # The value is in data["userData"]["foundDate"], and is either None (not found) or a `datetime` object
+        if "userData" in data:
+            user_data_obj: Dict[Any] = try_get_from_dict(data, "userData", {})
+            found_date_time: datetime | None = try_get_from_dict(user_data_obj, "foundDate", None, lambda d: None if d is None else datetime.fromisoformat(d))
+            self.foundDateTime = found_date_time
+        else:
+            self.foundDateTime = None
         
         # Parse the location
         # Returns the location as "State, Country" if either could be parsed

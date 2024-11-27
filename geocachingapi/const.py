@@ -30,7 +30,7 @@ CACHE_FIELDS_PARAMETER: str = ",".join([
                 "owner",
                 "postedCoordinates",
                 "favoritePoints",
-                #"findCount", # TODO: Include this another way, as this is not part of lite caches
+                "userData",
                 "placedDate",
                 "location"
             ])
