@@ -4,7 +4,7 @@ from typing import Dict, Any, Callable, Optional
 def try_get_from_dict(data: Dict[str, Any], key: str, original_value: Any, conversion: Optional[Callable[[Any], Any]] = None) -> Any:
     """Try to get value from dict, otherwise set default value"""
     if not key in data:
-        return None
+        return original_value
     
     value = data[key]
     if value is None:
