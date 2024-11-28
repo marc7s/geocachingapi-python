@@ -32,32 +32,32 @@ class GeocachingApiEnvironment(Enum):
 @dataclass
 class NearbyCachesSetting:
     location: GeocachingCoordinate
-    radiusKm: float
-    maxCount: int
+    radius_km: float
+    max_count: int
 
     def __init__(self, location: GeocachingCoordinate, radiusKm: float, maxCount: int) -> None:
         self.location = location
-        self.radiusKm = radiusKm
-        self.maxCount = round(maxCount)
+        self.radius_km = radiusKm
+        self.max_count = round(maxCount)
 
 class GeocachingSettings:
     """Class to hold the Geocaching Api settings"""
-    cache_codes: list[str]
-    trackable_codes: list[str]
+    tracked_cache_codes: list[str]
+    tracked_trackable_codes: list[str]
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackables: list[str] = [], caches: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
+    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackable_codes: list[str] = [], cache_codes: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
-        self.trackable_codes = trackables
+        self.tracked_trackable_codes = trackable_codes
         self.nearby_caches_setting = nearby_caches_setting
-        self.cache_codes = caches
+        self.tracked_cache_codes = cache_codes
 
-    def set_caches(self, cache_codes: list[str]):
-        self.cache_codes = cache_codes
+    def set_tracked_caches(self, cache_codes: list[str]):
+        self.tracked_cache_codes = cache_codes
 
-    def set_trackables(self, trackable_codes: list[str]):
-        self.trackable_codes = trackable_codes
+    def set_tracked_trackables(self, trackable_codes: list[str]):
+        self.tracked_trackable_codes = trackable_codes
 
     def set_nearby_caches_setting(self, setting: NearbyCachesSetting):
         self.nearby_caches_setting = setting
@@ -166,6 +166,7 @@ class GeocachingTrackable:
         self.current_geocache_name = try_get_from_dict(data, "currentGeocacheName", self.current_geocache_name)
         self.is_missing = try_get_from_dict(data, "isMissing", self.is_missing)
         self.trackable_type = try_get_from_dict(data, "type", self.trackable_type)
+        
         if "trackableLogs" in data and len(data["trackableLogs"]) > 0:
             self.latest_log = GeocachingTrackableLog(data=data["trackableLogs"][0])
 
@@ -175,29 +176,29 @@ class GeocachingCache:
     name: Optional[str] = None
     owner: GeocachingUser = None
     coordinates: GeocachingCoordinate = None
-    favoritePoints: Optional[int] = None
-    hiddenDate: Optional[datetime.date] = None
-    foundDateTime: Optional[datetime] = None
-    foundByUser: Optional[bool] = None
+    favorite_points: Optional[int] = None
+    hidden_date: Optional[datetime.date] = None
+    found_date_time: Optional[datetime] = None
+    found_by_user: Optional[bool] = None
     location: Optional[str] = None
 
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
-        self.favoritePoints = try_get_from_dict(data, "favoritePoints", self.favoritePoints, int)
-        self.hiddenDate = try_get_from_dict(data, "placedDate", self.hiddenDate, DATETIME_PARSER)
+        self.favorite_points = try_get_from_dict(data, "favoritePoints", self.favorite_points, int)
+        self.hidden_date = try_get_from_dict(data, "placedDate", self.hidden_date, DATETIME_PARSER)
 
         # Parse the user data (information about this cache, specific to the user)
         # The value is in data["userData"]["foundDate"], and is either None (not found) or a `datetime` object
         if "userData" in data:
             user_data_obj: Dict[Any] = try_get_from_dict(data, "userData", {})
             found_date_time: datetime | None = try_get_from_dict(user_data_obj, "foundDate", None, lambda d: None if d is None else datetime.fromisoformat(d))
-            self.foundDateTime = found_date_time
-            self.foundByUser = found_date_time is not None
+            self.found_date_time = found_date_time
+            self.found_by_user = found_date_time is not None
         else:
-            self.foundDateTime = None
-            self.foundByUser = None
+            self.found_date_time = None
+            self.found_by_user = None
         
         # Parse the location
         # Returns the location as "State, Country" if either could be parsed
@@ -233,10 +234,11 @@ class GeocachingStatus:
         """Update caches from the API result"""
         if not any(data):
            pass
+        
         caches: list[GeocachingCache] = []
-        for cacheData in data:
+        for cache_data in data:
             cache = GeocachingCache()
-            cache.update_from_dict(cacheData)
+            cache.update_from_dict(cache_data)
             caches.append(cache)
         self.tracked_caches = caches
 
@@ -244,6 +246,7 @@ class GeocachingStatus:
         """Update trackables from the API result"""
         if not any(data):
             pass
+        
         for trackable in data:
             reference_code = trackable["referenceCode"]
             if not reference_code in self.trackables.keys():
@@ -256,9 +259,9 @@ class GeocachingStatus:
             pass
 
         nearby_caches: list[GeocachingCache] = []
-        for cacheData in data:
+        for cache_data in data:
             cache = GeocachingCache()
-            cache.update_from_dict(cacheData)
+            cache.update_from_dict(cache_data)
             nearby_caches.append(cache)
         
         self.nearby_caches = nearby_caches
