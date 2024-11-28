@@ -198,11 +198,48 @@ class GeocachingApi:
         # Update trackable journeys
         if len(self._status.trackables) > 0:
             for trackable in self._status.trackables.values():
-                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/journeys?sort=loggedDate-")
+                fields = ",".join([
+                    "referenceCode",
+                    "geocacheName",
+                    "loggedDate",
+                    "coordinates",
+                    "url",
+                    "owner"
+                ])
+                max_log_count: int = 10
+                
+                # Only fetch logs related to movement
+                # Reference: https://api.groundspeak.com/documentation#trackable-log-types
+                logTypes: list[int] = ",".join([
+                    "14", # Dropped Off
+                    "15" # Transfer
+                ])
+                trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/trackablelogs?fields={fields}&logTypes={logTypes}&take={max_log_count}")
+
                 if trackable_journey_data:
                     # Create a list of GeocachingTrackableJourney instances
-                    journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
+                    journeys = await GeocachingTrackableJourney.from_list(trackable_journey_data)
+                    
+                    # Calculate distances between journeys
+                    # The journeys are sorted in order, so reverse it to iterate backwards
+                    j_iter = iter(reversed(journeys))
+                    curr_journey: GeocachingTrackableJourney | None = next(j_iter)
+                    prev_journey: GeocachingTrackableJourney | None = None
+                    while True:
+                        if curr_journey is None:
+                            break
+                        prev_journey = next(j_iter, None)
+                        if prev_journey is None:
+                            curr_journey.distance_km = 0
+                            break
+                        
+                        curr_journey.distance_km = GeocachingCoordinate.get_distance_km(prev_journey.coordinates, curr_journey.coordinates)
+                        curr_journey = prev_journey
+
                     trackable.journeys = journeys
+
+                    # Set the trackable coordinates to that of the latest log
+                    trackable.coordinates = journeys[-1].coordinates
 
         _LOGGER.debug(f'Trackables updated.')
 
