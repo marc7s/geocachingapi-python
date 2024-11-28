@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from .utils import try_get_from_dict
 
-DATETIME_PARSER = lambda d: datetime.date(datetime.fromisoformat(d))
+DATE_PARSER = lambda d: datetime.date(datetime.fromisoformat(d))
 
 def try_get_user_from_dict(data: Dict[str, Any], key: str, original_value: Any) -> GeocachingUser | None:
     """Try to get user from dict, otherwise set default value"""
@@ -100,22 +100,26 @@ class GeocachingCoordinate:
 class GeocachingTrackableJourney:
     """Class to hold Geocaching trackable journey information"""
     coordinates: GeocachingCoordinate = None
-    logged_date: Optional[datetime] = None
+    date: Optional[datetime] = None
+    user: GeocachingUser = None
+    cache_name: Optional[str] = None
+    url: Optional[str] = None
 
     def __init__(self, *, data: Dict[str, Any]) -> GeocachingTrackableJourney:
         """Constructor for Geocaching trackable journey"""
-        if "coordinates" in data:
+        if "coordinates" in data and data["coordinates"] is not None:
             self.coordinates = GeocachingCoordinate(data=data["coordinates"])
         else:
             self.coordinates = None
-        self.logged_date = try_get_from_dict(data, "loggedDate", self.logged_date)
+        self.date = try_get_from_dict(data, "loggedDate", self.date, DATE_PARSER)
+        self.user = try_get_user_from_dict(data, "owner", self.user)
+        self.cache_name = try_get_from_dict(data, "geocacheName", self.cache_name)
+        self.url = try_get_from_dict(data, "url", self.url)
 
     @classmethod
     def from_list(cls, data_list: list[Dict[str, Any]]) -> list[GeocachingTrackableJourney]:
         """Creates a list of GeocachingTrackableJourney instances from an array of data"""
-        # TODO: Look into filtering this list for only journey-related logs
-        # Reference: https://api.groundspeak.com/documentation#trackable-log-types
-        return [cls(data=data) for data in data_list]
+        return sorted([cls(data=data) for data in data_list], key=lambda j: j.date, reverse=False)
 
 @dataclass
 class GeocachingTrackableLog:
@@ -147,6 +151,7 @@ class GeocachingTrackable:
     current_geocache_code: Optional[str] = None
     current_geocache_name: Optional[str] = None
     journeys: Optional[list[GeocachingTrackableJourney]] = field(default_factory=list)
+    coordinates: GeocachingCoordinate = None
 
     is_missing: bool = False,
     trackable_type: str = None
@@ -158,7 +163,7 @@ class GeocachingTrackable:
         self.name = try_get_from_dict(data, "name", self.name)
         self.holder = try_get_user_from_dict(data, "holder", self.holder)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
-        self.release_date = try_get_from_dict(data, "releasedDate", self.release_date, DATETIME_PARSER)
+        self.release_date = try_get_from_dict(data, "releasedDate", self.release_date, DATE_PARSER)
         self.tracking_number = try_get_from_dict(data, "trackingNumber", self.tracking_number)
         self.kilometers_traveled = try_get_from_dict(data, "kilometersTraveled", self.kilometers_traveled, float)
         self.miles_traveled = try_get_from_dict(data, "milesTraveled", self.miles_traveled, float)
@@ -187,7 +192,7 @@ class GeocachingCache:
         self.name = try_get_from_dict(data, "name", self.name)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
         self.favorite_points = try_get_from_dict(data, "favoritePoints", self.favorite_points, int)
-        self.hidden_date = try_get_from_dict(data, "placedDate", self.hidden_date, DATETIME_PARSER)
+        self.hidden_date = try_get_from_dict(data, "placedDate", self.hidden_date, DATE_PARSER)
 
         # Parse the user data (information about this cache, specific to the user)
         # The value is in data["userData"]["foundDate"], and is either None (not found) or a `datetime` object
