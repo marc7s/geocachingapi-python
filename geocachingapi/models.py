@@ -6,6 +6,7 @@ from datetime import datetime
 from math import radians, sin, cos, acos
 from .utils import try_get_from_dict
 import reverse_geocode
+import asyncio
 
 DATE_PARSER = lambda d: datetime.date(datetime.fromisoformat(d))
 
@@ -118,14 +119,11 @@ class GeocachingTrackableJourney:
     cache_name: Optional[str] = None
     url: Optional[str] = None
 
-    def __init__(self, *, data: Dict[str, Any]) -> GeocachingTrackableJourney:
+    # Note: Reverse geocoding the journeys is not performed in the init function
+    def __init__(self, *, data: Dict[str, Any]) -> None:
         """Constructor for Geocaching trackable journey"""
         if "coordinates" in data and data["coordinates"] is not None:
             self.coordinates = GeocachingCoordinate(data=data["coordinates"])
-            location_info: dict[str, Any] = reverse_geocode.get((self.coordinates.latitude, self.coordinates.longitude))
-            location_city: str = try_get_from_dict(location_info, "city", "Unknown")
-            location_country: str = try_get_from_dict(location_info, "country", "Unknown")
-            self.location_name = f"{location_city}, {location_country}"
         else:
             self.coordinates = None
         self.date = try_get_from_dict(data, "loggedDate", self.date, DATE_PARSER)
@@ -134,9 +132,20 @@ class GeocachingTrackableJourney:
         self.url = try_get_from_dict(data, "url", self.url)
 
     @classmethod
-    def from_list(cls, data_list: list[Dict[str, Any]]) -> list[GeocachingTrackableJourney]:
+    async def from_list(cls, data_list: list[Dict[str, Any]]) -> list[GeocachingTrackableJourney]:
         """Creates a list of GeocachingTrackableJourney instances from an array of data"""
-        return sorted([cls(data=data) for data in data_list], key=lambda j: j.date, reverse=False)
+        journeys: list[GeocachingTrackableJourney] = sorted([cls(data=data) for data in data_list], key=lambda j: j.date, reverse=False)
+        
+        # Reverse geocoding the journey locations reads from a file and is therefore a blocking call
+        # Therefore, we go over all journeys and perform the reverse geocoding pass after they have been initialized
+        loop = asyncio.get_running_loop()
+        for journey in journeys:
+            location_info: dict[str, Any] = await loop.run_in_executor(None, reverse_geocode.get, (journey.coordinates.latitude, journey.coordinates.longitude))
+            location_city: str = try_get_from_dict(location_info, "city", "Unknown")
+            location_country: str = try_get_from_dict(location_info, "country", "Unknown")
+            journey.location_name = f"{location_city}, {location_country}"
+        
+        return journeys
 
 @dataclass
 class GeocachingTrackableLog:

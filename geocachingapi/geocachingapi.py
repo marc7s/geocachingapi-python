@@ -218,7 +218,7 @@ class GeocachingApi:
 
                 if trackable_journey_data:
                     # Create a list of GeocachingTrackableJourney instances
-                    journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
+                    journeys = await GeocachingTrackableJourney.from_list(trackable_journey_data)
                     
                     # Calculate distances between journeys
                     # The journeys are sorted in order, so reverse it to iterate backwards
