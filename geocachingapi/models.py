@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, TypedDict
 from dataclasses import dataclass, field
 from datetime import datetime
+from math import radians, sin, cos, acos
 from .utils import try_get_from_dict
 import reverse_geocode
 
@@ -97,11 +98,21 @@ class GeocachingCoordinate:
         self.latitude = try_get_from_dict(data, "latitude", None)
         self.longitude = try_get_from_dict(data, "longitude", None)
 
+    def get_distance_km(coord1: GeocachingCoordinate, coord2: GeocachingCoordinate) -> float:
+        """Returns the distance in kilometers between two coordinates"""
+        mlat = radians(float(coord1.latitude))
+        mlon = radians(float(coord1.longitude))
+        plat = radians(float(coord2.latitude))
+        plon = radians(float(coord2.longitude))
+        earth_radius_km = 6371.01
+        return earth_radius_km * acos(sin(mlat) * sin(plat) + cos(mlat) * cos(plat) * cos(mlon - plon))
+
 @dataclass
 class GeocachingTrackableJourney:
     """Class to hold Geocaching trackable journey information"""
     coordinates: GeocachingCoordinate = None
     location_name: Optional[str] = None
+    distance_km: Optional[float] = None
     date: Optional[datetime] = None
     user: GeocachingUser = None
     cache_name: Optional[str] = None

@@ -219,6 +219,23 @@ class GeocachingApi:
                 if trackable_journey_data:
                     # Create a list of GeocachingTrackableJourney instances
                     journeys = GeocachingTrackableJourney.from_list(trackable_journey_data)
+                    
+                    # Calculate distances between journeys
+                    # The journeys are sorted in order, so reverse it to iterate backwards
+                    j_iter = iter(reversed(journeys))
+                    curr_journey: GeocachingTrackableJourney | None = next(j_iter)
+                    prev_journey: GeocachingTrackableJourney | None = None
+                    while True:
+                        if curr_journey is None:
+                            break
+                        prev_journey = next(j_iter, None)
+                        if prev_journey is None:
+                            curr_journey.distance_km = 0
+                            break
+                        
+                        curr_journey.distance_km = GeocachingCoordinate.get_distance_km(prev_journey.coordinates, curr_journey.coordinates)
+                        curr_journey = prev_journey
+
                     trackable.journeys = journeys
 
                     # Set the trackable coordinates to that of the latest log
