@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, TypedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from .utils import try_get_from_dict
+import reverse_geocode
 
 DATE_PARSER = lambda d: datetime.date(datetime.fromisoformat(d))
 
@@ -100,6 +101,7 @@ class GeocachingCoordinate:
 class GeocachingTrackableJourney:
     """Class to hold Geocaching trackable journey information"""
     coordinates: GeocachingCoordinate = None
+    location_name: Optional[str] = None
     date: Optional[datetime] = None
     user: GeocachingUser = None
     cache_name: Optional[str] = None
@@ -109,6 +111,10 @@ class GeocachingTrackableJourney:
         """Constructor for Geocaching trackable journey"""
         if "coordinates" in data and data["coordinates"] is not None:
             self.coordinates = GeocachingCoordinate(data=data["coordinates"])
+            location_info: dict[str, Any] = reverse_geocode.get((self.coordinates.latitude, self.coordinates.longitude))
+            location_city: str = try_get_from_dict(location_info, "city", "Unknown")
+            location_country: str = try_get_from_dict(location_info, "country", "Unknown")
+            self.location_name = f"{location_city}, {location_country}"
         else:
             self.coordinates = None
         self.date = try_get_from_dict(data, "loggedDate", self.date, DATE_PARSER)
