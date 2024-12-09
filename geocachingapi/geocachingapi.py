@@ -21,6 +21,7 @@ from .exceptions import (
 )
 
 from .models import (
+    GeocachingCache,
     GeocachingCoordinate,
     GeocachingStatus,
     GeocachingSettings,
@@ -250,15 +251,25 @@ class GeocachingApi:
             return
         
         if data is None:
-            coordinates: GeocachingCoordinate = self._settings.nearby_caches_setting.location
-            radiusM: int = round(self._settings.nearby_caches_setting.radius_km * 1000)
-            maxCount: int = min(max(self._settings.nearby_caches_setting.max_count, 0), 100) # Take range is 0-100 in API
-            URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"
-            # The + sign is not encoded correctly, so we encode it manually
-            data = await self._request("GET", URL.replace("+", "%2B"))
-        self._status.update_nearby_caches_from_dict(data)
+            self._status.nearby_caches = await self.get_nearby_caches(
+                self._settings.nearby_caches_setting.location,
+                self._settings.nearby_caches_setting.radius_km,
+                self._settings.nearby_caches_setting.max_count
+            )
+        else:
+            self._status.update_nearby_caches_from_dict(data)
 
         _LOGGER.debug(f'Nearby caches updated.')
+    
+    async def get_nearby_caches(self, coordinates: GeocachingCoordinate, radius_km: float, max_count: int = 10) -> list[GeocachingCache]:
+        radiusM: int = round(radius_km * 1000)
+        maxCount: int = min(max(max_count, 0), 100) # Take range is 0-100 in API
+
+        URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"
+        # The + sign is not encoded correctly, so we encode it manually
+        data = await self._request("GET", URL.replace("+", "%2B"))
+
+        return GeocachingStatus.parse_caches(data)
 
     async def update_settings(self, settings: GeocachingSettings):
         """Update the Geocaching settings"""

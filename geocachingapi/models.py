@@ -265,13 +265,8 @@ class GeocachingStatus:
         """Update caches from the API result"""
         if not any(data):
            pass
-        
-        caches: list[GeocachingCache] = []
-        for cache_data in data:
-            cache = GeocachingCache()
-            cache.update_from_dict(cache_data)
-            caches.append(cache)
-        self.tracked_caches = caches
+
+        self.tracked_caches = GeocachingStatus.parse_caches(data)
 
     def update_trackables_from_dict(self, data: Any) -> None:
         """Update trackables from the API result"""
@@ -289,11 +284,18 @@ class GeocachingStatus:
         if not any(data):
             pass
 
-        nearby_caches: list[GeocachingCache] = []
+        self.nearby_caches = GeocachingStatus.parse_caches(data)
+    
+    @staticmethod
+    def parse_caches(data: Any) -> list[GeocachingCache]:
+        """Parse caches from the API result"""
+        if data is None:
+            return []
+        
+        caches: list[GeocachingCache] = []
         for cache_data in data:
             cache = GeocachingCache()
             cache.update_from_dict(cache_data)
-            nearby_caches.append(cache)
+            caches.append(cache)
         
-        self.nearby_caches = nearby_caches
-            
+        return caches
