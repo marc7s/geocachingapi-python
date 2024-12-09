@@ -18,6 +18,7 @@ from .exceptions import (
     GeocachingApiConnectionTimeoutError,
     GeocachingApiError,
     GeocachingApiRateLimitError,
+    GeocachingInvalidSettingsError,
 )
 
 from .models import (
@@ -137,22 +138,31 @@ class GeocachingApi:
         _LOGGER.debug(f'Response:')
         _LOGGER.debug(f'{str(result)}')
         return result
+    
+    def _tracked_trackables_enabled(self) -> bool:
+        return len(self._settings.tracked_trackable_codes) > 0
+    
+    def _tracked_caches_enabled(self) -> bool:
+        return len(self._settings.tracked_cache_codes) > 0
+    
+    def _nearby_caches_enabled(self) -> bool:
+        return self._settings.nearby_caches_setting is not None and self._settings.nearby_caches_setting.max_count > 0
 
     async def update(self) -> GeocachingStatus:
         # First, update the user
         await self._update_user()
         
         # If we are tracking trackables, update them
-        if len(self._settings.tracked_trackable_codes) > 0:
+        if self._tracked_trackables_enabled():
             await self._update_trackables()
         
-        # If the nearby caches setting is enabled, update them
-        if self._settings.nearby_caches_setting is not None and self._settings.nearby_caches_setting.max_count > 0:
-            await self._update_nearby_caches()
-        
         # If we are tracking caches, update them
-        if len(self._settings.tracked_cache_codes) > 0:
+        if self._tracked_caches_enabled():
             await self._update_tracked_caches()
+        
+        # If the nearby caches setting is enabled, update them
+        if self._nearby_caches_enabled():
+            await self._update_nearby_caches()
 
         _LOGGER.info(f'Status updated.')
         return self._status
@@ -286,6 +296,28 @@ class GeocachingApi:
         data = await self._request("GET", URL.replace("+", "%2B"))
 
         return GeocachingStatus.parse_caches(data)
+    
+    async def _verify_codes(self, endpoint: str, code_type: str, reference_codes: list[str], extra_params: dict[str, str] = {}) -> None:
+        """Verifies a set of reference codes to ensure they are valid, and returns a set of all invalid codes"""
+        ref_codes_param: str = ",".join(reference_codes)
+        additional_params: str = "&".join([f'{name}={val}' for name, val in extra_params.items()])
+        additional_params = "&" + additional_params if len(additional_params) > 0 else ""
+        
+        data = await self._request("GET", f"/{endpoint}?referenceCodes={ref_codes_param}&fields=referenceCode{additional_params}")
+        invalid_codes: set[str] = set(reference_codes).difference([d["referenceCode"] for d in data])
+        
+        if len(invalid_codes) > 0:
+            raise GeocachingInvalidSettingsError(code_type, invalid_codes)
+    
+    async def verify_settings(self) -> None:
+        """Verifies the settings, checking for invalid reference codes"""
+        # Verify the tracked trackable reference codes
+        if self._tracked_trackables_enabled():
+            await self._verify_codes("trackables", "trackable", self._settings.tracked_trackable_codes)
+        
+        # Verify the tracked cache reference codes
+        if self._tracked_caches_enabled():
+            await self._verify_codes("geocaches", "geocache", self._settings.tracked_cache_codes, {"lite": "true"})
 
     async def update_settings(self, settings: GeocachingSettings):
         """Update the Geocaching settings"""
