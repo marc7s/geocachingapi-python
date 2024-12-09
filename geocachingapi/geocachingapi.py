@@ -139,11 +139,18 @@ class GeocachingApi:
         return result
 
     async def update(self) -> GeocachingStatus:
+        # First, update the user
         await self._update_user()
+        
+        # If we are tracking trackables, update them
         if len(self._settings.tracked_trackable_codes) > 0:
             await self._update_trackables()
+        
+        # If the nearby caches setting is enabled, update them
         if self._settings.nearby_caches_setting is not None and self._settings.nearby_caches_setting.max_count > 0:
             await self._update_nearby_caches()
+        
+        # If we are tracking caches, update them
         if len(self._settings.tracked_cache_codes) > 0:
             await self._update_tracked_caches()
 
@@ -217,6 +224,7 @@ class GeocachingApi:
                 ])
                 trackable_journey_data = await self._request("GET",f"/trackables/{trackable.reference_code}/trackablelogs?fields={fields}&logTypes={logTypes}&take={max_log_count}")
 
+                # Note that if we are not fetching all journeys, the distance for the first journey in our data will be incorrect, since it does not know there was a previous journey
                 if trackable_journey_data:
                     # Create a list of GeocachingTrackableJourney instances
                     journeys = await GeocachingTrackableJourney.from_list(trackable_journey_data)
@@ -224,16 +232,22 @@ class GeocachingApi:
                     # Calculate distances between journeys
                     # The journeys are sorted in order, so reverse it to iterate backwards
                     j_iter = iter(reversed(journeys))
+
+                    # Since we are iterating backwards, next is actually the previous journey.
+                    # However, the previous journey is set in the loop, so we assume it is missing for now
                     curr_journey: GeocachingTrackableJourney | None = next(j_iter)
                     prev_journey: GeocachingTrackableJourney | None = None
                     while True:
+                        # Ensure that the current journey is valid
                         if curr_journey is None:
                             break
                         prev_journey = next(j_iter, None)
+                        # If we have reached the first journey, its distance should be 0 (it did not travel from anywhere)
                         if prev_journey is None:
                             curr_journey.distance_km = 0
                             break
                         
+                        # Calculate the distance from the previous to the current location, as that is the distance the current journey travelled
                         curr_journey.distance_km = GeocachingCoordinate.get_distance_km(prev_journey.coordinates, curr_journey.coordinates)
                         curr_journey = prev_journey
 
@@ -245,6 +259,7 @@ class GeocachingApi:
         _LOGGER.debug(f'Trackables updated.')
 
     async def _update_nearby_caches(self, data: Dict[str, Any] = None) -> None:
+        """Update the nearby caches"""
         assert self._status
         if self._settings.nearby_caches_setting is None:
             _LOGGER.warning("Cannot update nearby caches, setting has not been configured.")
@@ -262,7 +277,8 @@ class GeocachingApi:
         _LOGGER.debug(f'Nearby caches updated.')
     
     async def get_nearby_caches(self, coordinates: GeocachingCoordinate, radius_km: float, max_count: int = 10) -> list[GeocachingCache]:
-        radiusM: int = round(radius_km * 1000)
+        """Get caches nearby the provided coordinates, within the provided radius"""
+        radiusM: int = round(radius_km * 1000) # Convert the radius from km to m
         maxCount: int = min(max(max_count, 0), 100) # Take range is 0-100 in API
 
         URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"

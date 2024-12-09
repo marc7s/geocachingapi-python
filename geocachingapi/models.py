@@ -8,6 +8,7 @@ from .utils import try_get_from_dict
 import reverse_geocode
 import asyncio
 
+# Parser that parses an ISO date string to a date (not datetime)
 DATE_PARSER = lambda d: datetime.date(datetime.fromisoformat(d))
 
 def try_get_user_from_dict(data: Dict[str, Any], key: str, original_value: Any) -> GeocachingUser | None:
@@ -34,27 +35,28 @@ class GeocachingApiEnvironment(Enum):
 
 @dataclass
 class NearbyCachesSetting:
-    location: GeocachingCoordinate
-    radius_km: float
-    max_count: int
+    """Class to hold the nearby caches settings, as part of the API settings"""
+    location: GeocachingCoordinate # The position from which to search for nearby caches
+    radius_km: float # The radius around the position to search
+    max_count: int # The max number of nearby caches to return
 
     def __init__(self, location: GeocachingCoordinate, radiusKm: float, maxCount: int) -> None:
         self.location = location
         self.radius_km = radiusKm
-        self.max_count = round(maxCount)
+        self.max_count = max(0, round(maxCount))
 
 class GeocachingSettings:
-    """Class to hold the Geocaching Api settings"""
+    """Class to hold the Geocaching API settings"""
     tracked_cache_codes: list[str]
     tracked_trackable_codes: list[str]
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, environment:GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackable_codes: list[str] = [], cache_codes: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
+    def __init__(self, environment: GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackable_codes: list[str] = [], cache_codes: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
         self.tracked_trackable_codes = trackable_codes
-        self.nearby_caches_setting = nearby_caches_setting
         self.tracked_cache_codes = cache_codes
+        self.nearby_caches_setting = nearby_caches_setting
 
     def set_tracked_caches(self, cache_codes: list[str]):
         self.tracked_cache_codes = cache_codes
@@ -100,26 +102,26 @@ class GeocachingCoordinate:
         self.longitude = try_get_from_dict(data, "longitude", None)
 
     def get_distance_km(coord1: GeocachingCoordinate, coord2: GeocachingCoordinate) -> float:
-        """Returns the distance in kilometers between two coordinates"""
-        mlat = radians(float(coord1.latitude))
-        mlon = radians(float(coord1.longitude))
-        plat = radians(float(coord2.latitude))
-        plon = radians(float(coord2.longitude))
-        earth_radius_km = 6371.01
+        """Returns the distance in kilometers between two coordinates. Returns the great-circle distance between the coordinates"""
+        mlat: float = radians(float(coord1.latitude))
+        mlon: float = radians(float(coord1.longitude))
+        plat: float = radians(float(coord2.latitude))
+        plon: float = radians(float(coord2.longitude))
+        earth_radius_km: float = 6371.01
         return earth_radius_km * acos(sin(mlat) * sin(plat) + cos(mlat) * cos(plat) * cos(mlon - plon))
 
 @dataclass
 class GeocachingTrackableJourney:
     """Class to hold Geocaching trackable journey information"""
-    coordinates: GeocachingCoordinate = None
-    location_name: Optional[str] = None
-    distance_km: Optional[float] = None
-    date: Optional[datetime] = None
-    user: GeocachingUser = None
-    cache_name: Optional[str] = None
-    url: Optional[str] = None
+    coordinates: GeocachingCoordinate = None # The location at the end of this journey
+    location_name: Optional[str] = None # A reverse geocoded name of the location at the end of this journey
+    distance_km: Optional[float] = None # The distance the trackable travelled in this journey
+    date: Optional[datetime] = None # The date when this journey was completed
+    user: GeocachingUser = None # The Geocaching user who moved the trackable during this journey
+    cache_name: Optional[str] = None # The name of the cache the trackable resided in at the end of this journey
+    url: Optional[str] = None # A link to this journey
 
-    # Note: Reverse geocoding the journeys is not performed in the init function
+    # Note: Reverse geocoding the journeys is not performed in the init function as it is an asynchronous operation
     def __init__(self, *, data: Dict[str, Any]) -> None:
         """Constructor for Geocaching trackable journey"""
         if "coordinates" in data and data["coordinates"] is not None:
@@ -133,16 +135,21 @@ class GeocachingTrackableJourney:
 
     @classmethod
     async def from_list(cls, data_list: list[Dict[str, Any]]) -> list[GeocachingTrackableJourney]:
-        """Creates a list of GeocachingTrackableJourney instances from an array of data"""
+        """Creates a list of GeocachingTrackableJourney instances from an array of data, in order from oldest to newest"""
         journeys: list[GeocachingTrackableJourney] = sorted([cls(data=data) for data in data_list], key=lambda j: j.date, reverse=False)
         
         # Reverse geocoding the journey locations reads from a file and is therefore a blocking call
         # Therefore, we go over all journeys and perform the reverse geocoding pass after they have been initialized
         loop = asyncio.get_running_loop()
         for journey in journeys:
+            # Get the location information from the `reverse_geocode` package
             location_info: dict[str, Any] = await loop.run_in_executor(None, reverse_geocode.get, (journey.coordinates.latitude, journey.coordinates.longitude))
+            
+            # Parse the response to extract the relevant data
             location_city: str = try_get_from_dict(location_info, "city", "Unknown")
             location_country: str = try_get_from_dict(location_info, "country", "Unknown")
+            
+            # Set the location name to a formatted string
             journey.location_name = f"{location_city}, {location_country}"
         
         return journeys
@@ -236,6 +243,7 @@ class GeocachingCache:
         location_obj: Dict[Any] = try_get_from_dict(data, "location", {})
         location_state: str = try_get_from_dict(location_obj, "state", "Unknown")
         location_country: str = try_get_from_dict(location_obj, "country", "Unknown")
+        # Set the location to `None` if both state and country are unknown, otherwise set it to the known data
         self.location = None if set([location_state, location_country]) == {"Unknown"} else f"{location_state}, {location_country}"
         
         if "postedCoordinates" in data:
