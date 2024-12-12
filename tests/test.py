@@ -29,10 +29,11 @@ async def _update(api:GeocachingApi):
         print(f'Kilometers traveled: {trackable.kilometers_traveled}km')
         print(f'Miles traveled: {trackable.miles_traveled}mi')
         print(f'Missing?: {trackable.is_missing}')
-        if trackable.latest_journey:
-            print(f'last journey: {trackable.latest_journey.logged_date}')
-            print(f'latitude: {trackable.latest_journey.coordinates.latitude}')
-            print(f'longitude: {trackable.latest_journey.coordinates.longitude}')
+        if trackable.journeys and len(trackable.journeys) > 0:
+            latest_journey = trackable.journeys[-1]
+            print(f'last journey: {latest_journey.date}')
+            print(f'latitude: {latest_journey.coordinates.latitude}')
+            print(f'longitude: {latest_journey.coordinates.longitude}')
         if trackable.latest_log:
             print(f'last log date: {trackable.latest_log.logged_date}')
             print(f'last log type: {trackable.latest_log.log_type}')
