@@ -200,6 +200,7 @@ class GeocachingApi:
                 "name",
                 "holder",
                 "owner",
+                "url",
                 "releasedDate",
                 "trackingNumber",
                 "kilometersTraveled",

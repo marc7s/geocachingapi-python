@@ -30,6 +30,7 @@ CACHE_FIELDS_PARAMETER: str = ",".join([
                 "name",
                 "owner",
                 "postedCoordinates",
+                "url",
                 "favoritePoints",
                 "userData",
                 "placedDate",
