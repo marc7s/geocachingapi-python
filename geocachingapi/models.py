@@ -177,6 +177,7 @@ class GeocachingTrackable:
     name: Optional[str] = None
     holder: GeocachingUser = None
     owner: GeocachingUser = None
+    url: Optional[str] = None
     release_date: Optional[datetime.date] = None
     tracking_number: Optional[str] = None
     kilometers_traveled: Optional[float] = None
@@ -196,6 +197,7 @@ class GeocachingTrackable:
         self.name = try_get_from_dict(data, "name", self.name)
         self.holder = try_get_user_from_dict(data, "holder", self.holder)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
+        self.url = try_get_from_dict(data, "url", self.url)
         self.release_date = try_get_from_dict(data, "releasedDate", self.release_date, DATE_PARSER)
         self.tracking_number = try_get_from_dict(data, "trackingNumber", self.tracking_number)
         self.kilometers_traveled = try_get_from_dict(data, "kilometersTraveled", self.kilometers_traveled, float)
@@ -214,6 +216,7 @@ class GeocachingCache:
     name: Optional[str] = None
     owner: GeocachingUser = None
     coordinates: GeocachingCoordinate = None
+    url: Optional[str] = None
     favorite_points: Optional[int] = None
     hidden_date: Optional[datetime.date] = None
     found_date_time: Optional[datetime] = None
@@ -224,6 +227,7 @@ class GeocachingCache:
         self.reference_code = try_get_from_dict(data, "referenceCode", self.reference_code)
         self.name = try_get_from_dict(data, "name", self.name)
         self.owner = try_get_user_from_dict(data, "owner", self.owner)
+        self.url = try_get_from_dict(data, "url", self.url)
         self.favorite_points = try_get_from_dict(data, "favoritePoints", self.favorite_points, int)
         self.hidden_date = try_get_from_dict(data, "placedDate", self.hidden_date, DATE_PARSER)
 
