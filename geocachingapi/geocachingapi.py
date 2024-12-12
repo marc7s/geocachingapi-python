@@ -53,7 +53,7 @@ class GeocachingApi:
         """Initialize connection with the Geocaching API."""
         self._environment_settings = ENVIRONMENT_SETTINGS[environment]
         self._status = GeocachingStatus()
-        self._settings = settings or GeocachingSettings(False)
+        self._settings = settings or GeocachingSettings()
         self._session = session
         self.request_timeout = request_timeout
         self.token = token
@@ -172,6 +172,7 @@ class GeocachingApi:
         if data is None:
             cache_codes = ",".join(self._settings.tracked_cache_codes)
             data = await self._request("GET", f"/geocaches?referenceCodes={cache_codes}&fields={CACHE_FIELDS_PARAMETER}&lite=true")
+
         self._status.update_caches(data)
         _LOGGER.debug(f'Tracked caches updated.')
 

@@ -23,10 +23,10 @@ def try_get_user_from_dict(data: Dict[str, Any], key: str, original_value: Any) 
 
 class GeocachingApiEnvironmentSettings(TypedDict):
     """Class to represent API environment settings"""
-    api_scheme:str
-    api_host:str
+    api_scheme: str
+    api_host: str
     api_port: int
-    api_base_bath:str
+    api_base_bath: str
 
 class GeocachingApiEnvironment(Enum):
     """Enum to represent API environment"""
@@ -52,7 +52,7 @@ class GeocachingSettings:
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, environment: GeocachingApiEnvironment = GeocachingApiEnvironment.Production, trackable_codes: list[str] = [], cache_codes: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
+    def __init__(self, trackable_codes: list[str] = [], cache_codes: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
         self.tracked_trackable_codes = trackable_codes
         self.tracked_cache_codes = cache_codes
@@ -187,7 +187,7 @@ class GeocachingTrackable:
     journeys: Optional[list[GeocachingTrackableJourney]] = field(default_factory=list)
     coordinates: GeocachingCoordinate = None
 
-    is_missing: bool = False,
+    is_missing: bool = False
     trackable_type: str = None
     latest_log: GeocachingTrackableLog = None
 
