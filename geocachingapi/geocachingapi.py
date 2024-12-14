@@ -13,6 +13,7 @@ from aiohttp import ClientResponse, ClientSession, ClientError
 
 from typing import Any, Awaitable, Callable, Dict, Optional
 from .const import ENVIRONMENT_SETTINGS, CACHE_FIELDS_PARAMETER
+from .limits import MAXIMUM_NEARBY_CACHES
 from .exceptions import (
     GeocachingApiConnectionError,
     GeocachingApiConnectionTimeoutError,
@@ -293,7 +294,7 @@ class GeocachingApi:
     async def get_nearby_caches(self, coordinates: GeocachingCoordinate, radius_km: float, max_count: int = 10) -> list[GeocachingCache]:
         """Get caches nearby the provided coordinates, within the provided radius"""
         radiusM: int = round(radius_km * 1000) # Convert the radius from km to m
-        max_count_param: int = clamp(max_count, 0, 100) # Take range is 0-100 in API
+        max_count_param: int = clamp(max_count, 0, MAXIMUM_NEARBY_CACHES) # Take range is 0-100 in API
 
         URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={max_count_param}&sort=distance+&lite=true"
         # The + sign is not encoded correctly, so we encode it manually

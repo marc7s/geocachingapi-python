@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from math import radians, sin, cos, acos
 
+from geocachingapi.limits import MAXIMUM_TRACKED_CACHES, MAXIMUM_TRACKED_TRACKABLES
 from geocachingapi.exceptions import GeocachingTooManyCodesError
 from .utils import try_get_from_dict
 import reverse_geocode
@@ -61,14 +62,14 @@ class GeocachingSettings:
         self.nearby_caches_setting = nearby_caches_setting
 
     def set_tracked_caches(self, cache_codes: set[str]):
-        # A single API call can only fetch 50 caches maximum
-        if len(cache_codes) > 50:
+        # Ensure the number of tracked caches are within the limits
+        if len(cache_codes) > MAXIMUM_TRACKED_CACHES:
             raise GeocachingTooManyCodesError(f"Number of tracked caches cannot exceed 50. Was: {len(cache_codes)}")
         self.tracked_cache_codes = cache_codes
 
     def set_tracked_trackables(self, trackable_codes: set[str]):
-        # A single API call can only fetch 50 trackables maximum
-        if len(trackable_codes) > 50:
+        # Ensure the number of tracked trackables are within the limits
+        if len(trackable_codes) > MAXIMUM_TRACKED_TRACKABLES:
             raise GeocachingTooManyCodesError(f"Number of tracked trackables cannot exceed 50. Was: {len(trackable_codes)}")
         self.tracked_trackable_codes = trackable_codes
 
