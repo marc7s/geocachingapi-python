@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional, TypedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import radians, sin, cos, acos
+
+from geocachingapi.exceptions import GeocachingTooManyCodesError
 from .utils import try_get_from_dict
 import reverse_geocode
 import asyncio
@@ -47,21 +49,27 @@ class NearbyCachesSetting:
 
 class GeocachingSettings:
     """Class to hold the Geocaching API settings"""
-    tracked_cache_codes: list[str]
-    tracked_trackable_codes: list[str]
+    tracked_cache_codes: set[str]
+    tracked_trackable_codes: set[str]
     environment: GeocachingApiEnvironment
     nearby_caches_setting: NearbyCachesSetting
 
-    def __init__(self, trackable_codes: list[str] = [], cache_codes: list[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
+    def __init__(self, trackable_codes: set[str] = [], cache_codes: set[str] = [], nearby_caches_setting: NearbyCachesSetting = None) -> None:
         """Initialize settings"""
         self.tracked_trackable_codes = trackable_codes
         self.tracked_cache_codes = cache_codes
         self.nearby_caches_setting = nearby_caches_setting
 
-    def set_tracked_caches(self, cache_codes: list[str]):
+    def set_tracked_caches(self, cache_codes: set[str]):
+        # A single API call can only fetch 50 caches maximum
+        if len(cache_codes) > 50:
+            raise GeocachingTooManyCodesError(f"Number of tracked caches cannot exceed 50. Was: {len(cache_codes)}")
         self.tracked_cache_codes = cache_codes
 
-    def set_tracked_trackables(self, trackable_codes: list[str]):
+    def set_tracked_trackables(self, trackable_codes: set[str]):
+        # A single API call can only fetch 50 trackables maximum
+        if len(trackable_codes) > 50:
+            raise GeocachingTooManyCodesError(f"Number of tracked trackables cannot exceed 50. Was: {len(trackable_codes)}")
         self.tracked_trackable_codes = trackable_codes
 
     def set_nearby_caches_setting(self, setting: NearbyCachesSetting):

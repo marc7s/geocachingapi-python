@@ -12,3 +12,7 @@ def try_get_from_dict(data: Dict[str, Any], key: str, fallback: Any, conversion:
     if conversion is None:
         return value
     return conversion(value)
+
+# Clamps an int between the min and max value, and returns an int in that range
+def clamp(value: int, min_value: int, max_value: int) -> int:
+    return min(max(value, min_value), max_value)

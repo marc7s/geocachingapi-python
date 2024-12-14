@@ -20,6 +20,7 @@ from .exceptions import (
     GeocachingApiRateLimitError,
     GeocachingInvalidSettingsError,
 )
+from .utils import clamp
 
 from .models import (
     GeocachingCache,
@@ -167,15 +168,6 @@ class GeocachingApi:
         _LOGGER.info(f'Status updated.')
         return self._status
 
-    async def _update_tracked_caches(self, data: Dict[str, Any] = None) -> None:
-        assert self._status
-        if data is None:
-            cache_codes = ",".join(self._settings.tracked_cache_codes)
-            data = await self._request("GET", f"/geocaches?referenceCodes={cache_codes}&fields={CACHE_FIELDS_PARAMETER}&lite=true")
-
-        self._status.update_caches(data)
-        _LOGGER.debug(f'Tracked caches updated.')
-
     async def _update_user(self, data: Dict[str, Any] = None) -> None:
         assert self._status
         if data is None:
@@ -192,6 +184,15 @@ class GeocachingApi:
             data = await self._request("GET", f"/users/me?fields={fields}")
         self._status.update_user_from_dict(data)
         _LOGGER.debug(f'User updated.')
+    
+    async def _update_tracked_caches(self, data: Dict[str, Any] = None) -> None:
+        assert self._status
+        if data is None:
+            cache_codes = ",".join(self._settings.tracked_cache_codes)
+            data = await self._request("GET", f"/geocaches?referenceCodes={cache_codes}&fields={CACHE_FIELDS_PARAMETER}&lite=true")
+
+        self._status.update_caches(data)
+        _LOGGER.debug(f'Tracked caches updated.')
 
     async def _update_trackables(self, data: Dict[str, Any] = None) -> None:
         assert self._status
@@ -212,7 +213,8 @@ class GeocachingApi:
                 "type"
             ])
             trackable_parameters = ",".join(self._settings.tracked_trackable_codes)
-            data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}&expand=trackablelogs:1")
+            max_count_param: int = clamp(len(self._settings.tracked_trackable_codes), 0, 50) # Take range is 0-50 in API
+            data = await self._request("GET", f"/trackables?referenceCodes={trackable_parameters}&fields={fields}&take={max_count_param}&expand=trackablelogs:1")
         self._status.update_trackables_from_dict(data)
         
         # Update trackable journeys
@@ -226,7 +228,7 @@ class GeocachingApi:
                     "url",
                     "owner"
                 ])
-                max_log_count: int = 10
+                max_log_count: int = clamp(10, 0, 50) # Take range is 0-50 in API
                 
                 # Only fetch logs related to movement
                 # Reference: https://api.groundspeak.com/documentation#trackable-log-types
@@ -291,22 +293,22 @@ class GeocachingApi:
     async def get_nearby_caches(self, coordinates: GeocachingCoordinate, radius_km: float, max_count: int = 10) -> list[GeocachingCache]:
         """Get caches nearby the provided coordinates, within the provided radius"""
         radiusM: int = round(radius_km * 1000) # Convert the radius from km to m
-        maxCount: int = min(max(max_count, 0), 100) # Take range is 0-100 in API
+        max_count_param: int = clamp(max_count, 0, 100) # Take range is 0-100 in API
 
-        URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={maxCount}&sort=distance+&lite=true"
+        URL = f"/geocaches/search?q=location:[{coordinates.latitude},{coordinates.longitude}]+radius:{radiusM}m&fields={CACHE_FIELDS_PARAMETER}&take={max_count_param}&sort=distance+&lite=true"
         # The + sign is not encoded correctly, so we encode it manually
         data = await self._request("GET", URL.replace("+", "%2B"))
 
         return GeocachingStatus.parse_caches(data)
     
-    async def _verify_codes(self, endpoint: str, code_type: str, reference_codes: list[str], extra_params: dict[str, str] = {}) -> None:
+    async def _verify_codes(self, endpoint: str, code_type: str, reference_codes: set[str], extra_params: dict[str, str] = {}) -> None:
         """Verifies a set of reference codes to ensure they are valid, and returns a set of all invalid codes"""
         ref_codes_param: str = ",".join(reference_codes)
         additional_params: str = "&".join([f'{name}={val}' for name, val in extra_params.items()])
         additional_params = "&" + additional_params if len(additional_params) > 0 else ""
         
         data = await self._request("GET", f"/{endpoint}?referenceCodes={ref_codes_param}&fields=referenceCode{additional_params}")
-        invalid_codes: set[str] = set(reference_codes).difference([d["referenceCode"] for d in data])
+        invalid_codes: set[str] = reference_codes.difference([d["referenceCode"] for d in data])
         
         if len(invalid_codes) > 0:
             raise GeocachingInvalidSettingsError(code_type, invalid_codes)
